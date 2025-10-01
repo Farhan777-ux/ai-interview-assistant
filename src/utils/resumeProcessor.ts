@@ -1,8 +1,8 @@
-import { getDocument, GlobalWorkerOptions, version } from 'pdfjs-dist';
 import mammoth from 'mammoth';
 
-// Use a locally-served worker (copied into public) to avoid CORS/ESM issues in CRA
-GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.mjs`;
+// NOTE: We lazy-load pdfjs-dist inside extractTextFromPDF to avoid any startup/runtime
+// issues in production hosting (e.g., module worker quirks). The worker file is
+// served locally from public/pdf.worker.min.mjs when needed.
 
 export interface ExtractedData {
   name?: string;
@@ -13,6 +13,15 @@ export interface ExtractedData {
 
 export async function extractTextFromPDF(file: File): Promise<string> {
   try {
+    // Lazy-load pdfjs to avoid initialization on page load
+    const pdfjs: any = await import('pdfjs-dist');
+    const { getDocument, GlobalWorkerOptions } = pdfjs;
+
+    // Point worker to local file in public/
+    try {
+      GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ''}/pdf.worker.min.mjs`;
+    } catch {}
+
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await getDocument({ data: arrayBuffer }).promise;
     let text = '';
