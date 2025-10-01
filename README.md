@@ -1,46 +1,84 @@
-# Getting Started with Create React App
+# AI Interview Assistant (React + Redux)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+An AI-powered interview practice and evaluation app with two synced tabs:
+- Interviewee (chat) — resume upload, missing field collection, 6 timed questions (2 easy, 2 medium, 2 hard), auto-submit on timeout
+- Interviewer (dashboard) — list of candidates with score/summary, search/sort, per-candidate detail view
 
-## Available Scripts
+Data is persisted locally so users can close/reopen and continue. Includes a Welcome Back modal for resuming sessions.
 
-In the project directory, you can run:
+## Live Dev
 
-### `npm start`
+- Start: `npm start`
+- URL: http://localhost:3000
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+## Core Features
 
-The page will reload if you make edits.\
-You will also see any lint errors in the console.
+- Resume Upload (PDF/DOCX)
+  - Extract Name, Email, Phone
+  - Missing fields are collected before interview starts
+- Interview Flow
+  - 6 questions total: 2 Easy (20s), 2 Medium (60s), 2 Hard (120s)
+  - One question at a time, per-question timer, auto-submit on timeout
+  - Local mock AI for question generation, answer scoring, and final summary
+- Interviewer Dashboard
+  - Candidate list with final score and summary
+  - Search and sort
+  - View details: questions, answers, per-question scores
+  - Delete sessions (works in Dashboard and Welcome Back modal)
+- Persistence
+  - Redux Toolkit + redux-persist (localStorage)
+  - Restores interview state, timers, and chat history
+  - Welcome Back modal for unfinished sessions
 
-### `npm test`
+## Tech Stack
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- React (CRA)
+- Redux Toolkit + redux-persist
+- Ant Design UI
+- pdfjs-dist (PDF text extraction)
+- mammoth (DOCX text extraction)
 
-### `npm run build`
+## PDF.js Worker Setup
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+To avoid cross-origin and ESM worker issues under CRA, the PDF.js worker is served locally from `public`:
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- Worker file: `public/pdf.worker.min.mjs`
+- Config: `src/utils/resumeProcessor.ts` sets
+  ```js
+  GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL}/pdf.worker.min.mjs`;
+  ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+This repo includes the worker file under `public/` so dev and production builds work without downloading from a CDN.
 
-### `npm run eject`
+## Project Structure (key files)
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+- `src/components/ResumeUpload.tsx` — Upload + parsing + test mode
+- `src/components/InterviewCoordinator.tsx` — Missing field collection + start flow
+- `src/components/ChatInterface.tsx` — Chat, timers, scoring and progression
+- `src/components/CandidateList.tsx` — Dashboard with search/sort, view, delete
+- `src/components/WelcomeBackModal.tsx` — Resume/Delete unfinished sessions
+- `src/utils/resumeProcessor.ts` — PDF/DOCX parsing and field extraction
+- `src/utils/aiService.ts` — Mock AI for questions and scoring
+- `src/store/*` — Redux slices and persisted store config
+- `public/pdf.worker.min.mjs` — Local PDF.js worker
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Deployment
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+1) Build: `npm run build`
+2) Deploy the `build/` directory to your host (Vercel/Netlify compatible)
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+Netlify
+- Set build command: `npm run build`
+- Publish directory: `build`
 
-## Learn More
+Vercel
+- Create new project from this repo, framework: React (Create React App)
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+## Notes
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+- The app stores data locally (browser). Clearing site data resets candidates and progress.
+- No external LLM API keys are required; question generation and scoring are local mocks.
+
+## License
+
+MIT
