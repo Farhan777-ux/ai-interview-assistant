@@ -6,6 +6,16 @@ An AI-powered interview practice and evaluation app with two synced tabs:
 
 Data is persisted locally so users can close/reopen and continue. Includes a Welcome Back modal for resuming sessions.
 
+## Recent customizations (requested)
+
+- Interviewee footer added and styled for dark theme
+- Removed “Start Test Interview (Skip Upload)” option
+- Missing-details gate: if Name/Email/Phone are absent after resume parsing, a focused form appears and blocks interview start until completed
+- Phone numbers standardized to India format: always displayed as (+91) XXXXXXXXXX, inputs require 10 digits, and storage is normalized to the last 10 digits
+- Applied cohesive dark theme with blue accents and clear sans-serif fonts; centered and enhanced header title
+- Increased header height to ensure the title is fully visible; adjusted content layout accordingly
+- Improved readability of answers in Interviewer > View details modal (high-contrast panel, preserved line breaks, scroll for long answers)
+
 ## Live Dev
 
 - Start: `npm start`
@@ -52,15 +62,28 @@ This repo includes the worker file under `public/` so dev and production builds 
 
 ## Project Structure (key files)
 
-- `src/components/ResumeUpload.tsx` — Upload + parsing + test mode
+- `src/components/ResumeUpload.tsx` — Upload + parsing + missing-details gate (no test mode)
 - `src/components/InterviewCoordinator.tsx` — Missing field collection + start flow
 - `src/components/ChatInterface.tsx` — Chat, timers, scoring and progression
 - `src/components/CandidateList.tsx` — Dashboard with search/sort, view, delete
 - `src/components/WelcomeBackModal.tsx` — Resume/Delete unfinished sessions
-- `src/utils/resumeProcessor.ts` — PDF/DOCX parsing and field extraction
+- `src/utils/resumeProcessor.ts` — PDF/DOCX parsing and field extraction (stores last 10 phone digits)
+- `src/utils/phone.ts` — Phone helpers: normalizeTo10Digits, formatPhoneIndia ((+91) XXXXXXXXXX)
 - `src/utils/aiService.ts` — Mock AI for questions and scoring
 - `src/store/*` — Redux slices and persisted store config
 - `public/pdf.worker.min.mjs` — Local PDF.js worker
+
+## Styling & Theme
+
+- Ant Design dark algorithm enabled, with primary blue accent (#3fa9ff)
+- Header title centered and emphasized; global sans-serif font stack (no cursive)
+- Cards, modals, and tabs tuned for dark backgrounds
+
+## Phone Number Handling
+
+- Display: always formatted as (+91) XXXXXXXXXX across the app
+- Input: requires exactly 10 digits; UI shows (+91) prefix in forms
+- Storage: only the last 10 digits are stored; extraction normalized from resume text
 
 ## Deployment
 
@@ -73,6 +96,11 @@ Netlify
 
 Vercel
 - Create new project from this repo, framework: React (Create React App)
+
+## Paths
+
+- Project root: `C:\\Users\\User\\ai-interview-assistant`
+- Production build: `C:\\Users\\User\\ai-interview-assistant\\build`
 
 ## Notes
 
