@@ -43,13 +43,13 @@ const FULLSTACK_QUESTIONS = {
 
 export function generateQuestions(): Question[] {
   const questions: Question[] = [];
-  
-  // Generate 2 Easy, 2 Medium, 2 Hard questions
-  (['Easy', 'Medium', 'Hard'] as const).forEach(difficulty => {
+
+  // Generate exactly 2 Easy, then 2 Medium, then 2 Hard (strict order)
+  (['Easy', 'Medium', 'Hard'] as const).forEach((difficulty) => {
     const questionPool = FULLSTACK_QUESTIONS[difficulty];
     const selectedQuestions = getRandomQuestions(questionPool, 2);
-    
-    selectedQuestions.forEach(questionText => {
+
+    selectedQuestions.forEach((questionText) => {
       questions.push({
         id: uuidv4(),
         text: questionText,
@@ -61,8 +61,8 @@ export function generateQuestions(): Question[] {
     });
   });
 
-  // Shuffle questions to mix difficulties
-  return shuffleArray(questions);
+  // IMPORTANT: Do NOT shuffle. Preserve Easy → Medium → Hard order.
+  return questions;
 }
 
 function getRandomQuestions(pool: string[], count: number): string[] {
@@ -70,6 +70,7 @@ function getRandomQuestions(pool: string[], count: number): string[] {
   return shuffled.slice(0, count);
 }
 
+// Note: shuffleArray kept for potential future use but not used in flow ordering.
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -80,80 +81,69 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 export function scoreAnswer(question: Question, answer: string): { score: number; feedback: string } {
-  if (!answer || answer.trim().length === 0) {
+  const raw = (answer || '').trim();
+  const words = raw.length ? raw.split(/\s+/).length : 0;
+
+  // Never give 0 — even empty gets a minimal score so results look friendly
+  const MIN_SCORE = 3.0; // make baseline a bit higher
+  const clamp = (n: number) => Math.max(MIN_SCORE, Math.min(10, n));
+
+  if (!raw) {
     return {
-      score: 0,
-      feedback: "No answer provided."
+      score: MIN_SCORE,
+      feedback: 'No answer provided. Minimal score awarded to keep results friendly.'
     };
   }
 
-  const answerLength = answer.trim().length;
-  const words = answer.trim().split(/\s+/).length;
-  
-  // Basic scoring algorithm (in real app, this would use AI)
+  // Baseline scoring is more lenient: short but valid answers can still score well
   let score = 0;
-  let feedback = "";
+  let feedback = '';
 
-  // Base score on answer length and complexity
-  if (question.difficulty === 'Easy') {
-    if (answerLength < 50) {
-      score = Math.min(3, Math.max(1, words / 5));
-      feedback = "Answer is quite brief. Consider providing more detail.";
-    } else if (answerLength < 200) {
-      score = Math.min(8, Math.max(4, words / 10));
-      feedback = "Good answer with adequate detail.";
-    } else {
-      score = Math.min(10, Math.max(6, words / 15));
-      feedback = "Comprehensive answer with good detail.";
-    }
-  } else if (question.difficulty === 'Medium') {
-    if (answerLength < 100) {
-      score = Math.min(4, Math.max(1, words / 8));
-      feedback = "Answer needs more depth for a medium-level question.";
-    } else if (answerLength < 300) {
-      score = Math.min(7, Math.max(3, words / 12));
-      feedback = "Decent answer, but could use more technical detail.";
-    } else {
-      score = Math.min(10, Math.max(5, words / 18));
-      feedback = "Well-detailed answer showing good understanding.";
-    }
-  } else { // Hard
-    if (answerLength < 150) {
-      score = Math.min(3, Math.max(1, words / 10));
-      feedback = "Hard questions require more comprehensive answers.";
-    } else if (answerLength < 400) {
-      score = Math.min(6, Math.max(2, words / 15));
-      feedback = "Good start, but hard questions need more architectural thinking.";
-    } else {
-      score = Math.min(10, Math.max(4, words / 20));
-      feedback = "Excellent comprehensive answer with good technical depth.";
-    }
-  }
-
-  // Add bonus for technical keywords (simple keyword matching)
-  const technicalKeywords = [
-    'react', 'javascript', 'node', 'api', 'database', 'server', 'client',
-    'async', 'await', 'promise', 'callback', 'event', 'component', 'state',
-    'props', 'hook', 'middleware', 'express', 'mongodb', 'sql', 'rest',
-    'http', 'authentication', 'authorization', 'security', 'performance',
-    'optimization', 'scalability', 'architecture', 'microservice', 'monolith'
-  ];
-
-  const keywordCount = technicalKeywords.filter(keyword =>
-    answer.toLowerCase().includes(keyword)
-  ).length;
-
-  if (keywordCount > 0) {
-    score += Math.min(2, keywordCount * 0.5);
-    if (keywordCount >= 3) {
-      feedback += " Great use of technical terminology.";
-    }
-  }
-
-  return {
-    score: Math.min(10, Math.round(score * 10) / 10),
-    feedback: feedback.trim()
+  const addFeedback = (txt: string) => {
+    if (!feedback) feedback = txt; else feedback += ' ' + txt;
   };
+
+  const easyBands = () => {
+    if (words < 6) { score = 6.8; addFeedback('Concise but valid answer for an easy question.'); }
+    else if (words < 18) { score = 8.2; addFeedback('Good concise explanation.'); }
+    else { score = 9.5; addFeedback('Detailed and clear.'); }
+  };
+  const mediumBands = () => {
+    if (words < 10) { score = 6.2; addFeedback('Brief for medium difficulty; still reasonable.'); }
+    else if (words < 30) { score = 7.8; addFeedback('Solid explanation for a medium question.'); }
+    else { score = 9.0; addFeedback('Thorough and clear.'); }
+  };
+  const hardBands = () => {
+    if (words < 15) { score = 6.0; addFeedback('Compact for a hard question; consider adding more design detail.'); }
+    else if (words < 45) { score = 8.0; addFeedback('Good coverage; shows understanding.'); }
+    else { score = 9.2; addFeedback('Comprehensive and well-structured.'); }
+  };
+
+  if (question.difficulty === 'Easy') easyBands();
+  else if (question.difficulty === 'Medium') mediumBands();
+  else hardBands();
+
+  // Keyword bonus — small, to help short but correct answers look good
+  const technicalKeywords = [
+    'react','javascript','node','api','database','server','client','async','await','promise','callback','event',
+    'component','state','props','hook','express','middleware','mongodb','postgres','sql','rest','http','jwt',
+    'authentication','authorization','security','performance','cache','optimization','scalability','architecture',
+    'microservice','monolith','queue','redis','kafka','docker'
+  ];
+  const lower = raw.toLowerCase();
+  const keywordCount = technicalKeywords.filter(k => lower.includes(k)).length;
+  if (keywordCount > 0) {
+    const cap = question.difficulty === 'Hard' ? 2.5 : question.difficulty === 'Medium' ? 2.2 : 1.8;
+    score += Math.min(cap, 0.5 * keywordCount);
+    if (keywordCount >= 2) addFeedback('Good use of technical terms.');
+  }
+
+  // Small structure bonus for punctuation/newlines indicating organization
+  if (/[\n,.;-]/.test(raw)) score += 0.5;
+
+  // Finalize
+  score = Math.round(clamp(score) * 10) / 10;
+  return { score, feedback: feedback.trim() };
 }
 
 export function generateFinalSummary(questions: Question[], totalScore: number, candidateName: string): string {

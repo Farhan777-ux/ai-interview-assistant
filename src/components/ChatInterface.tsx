@@ -11,7 +11,7 @@ import {
   pauseInterview,
   resumeInterview
 } from '../store/candidatesSlice';
-import { setIsInterviewActive } from '../store/appSlice';
+import { setIsInterviewActive, setEndModal } from '../store/appSlice';
 import ChatMessage from './ChatMessage';
 import { scoreAnswer, generateFinalSummary } from '../utils/aiService';
 import { TOTAL_QUESTIONS } from '../types';
@@ -27,6 +27,7 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ candidateId }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const tabEndRef = useRef(false);
   const dispatch = useDispatch();
   
   const { candidates, chatMessages } = useSelector((state: RootState) => state.candidates);
@@ -44,6 +45,26 @@ const ChatInterface: React.FC<ChatInterfaceProps> = ({ candidateId }) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // End interview immediately if user switches browser tabs
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden && interview && !interview.completedAt && !tabEndRef.current) {
+        tabEndRef.current = true;
+        // Show bold global modal via app state when user returns
+        dispatch(setEndModal({ visible: true, message: "You've switched tabs. The interview is now ended." }));
+
+        // Compute score so far (average of answered), keep it friendly
+        const answered = interview.questions.filter(q => q.score !== undefined);
+        const avg = answered.length > 0 ? (answered.reduce((s, q) => s + (q.score || 0), 0) / answered.length) : 3;
+        const summary = 'Interview terminated due to browser tab switch. Please avoid switching tabs during timed assessments.';
+        dispatch(completeInterview({ candidateId, finalScore: avg, summary }));
+        dispatch(setIsInterviewActive(false));
+      }
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [candidateId, dispatch, interview]);
 
   // Timer logic
   useEffect(() => {

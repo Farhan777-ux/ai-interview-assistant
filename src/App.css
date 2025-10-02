@@ -1,38 +1,47 @@
-.App {
-  text-align: center;
+/* Global dark polish */
+:root {
+  color-scheme: dark;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+body {
+  background: #0b0f14;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.app-header-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.3px;
+  color: #e6f4ff;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.2);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+/* Optional: soften cards on dark */
+.ant-card {
+  background: #0f172a !important;
+  border-color: #1f2937 !important;
 }
 
-.App-link {
-  color: #61dafb;
+.ant-modal-content {
+  background: #0f172a !important;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.ant-modal-header {
+  background: #0f172a !important;
+  border-bottom-color: #1f2937 !important;
+}
+
+.ant-modal-title {
+  color: #e6f4ff !important;
+}
+
+.ant-tabs-tab {
+  color: #cbd5e1 !important;
+}
+
+.ant-tabs-tab-active .ant-tabs-tab-btn {
+  color: #3fa9ff !important;
+}
+
+.ant-typography, .ant-card, .ant-layout, .ant-layout-content, .ant-layout-header {
+  font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif !important;
 }

@@ -4,6 +4,7 @@ import { SearchOutlined, EyeOutlined, DeleteOutlined, TrophyOutlined } from '@an
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { deleteCandidate } from '../store/candidatesSlice';
+import { formatPhoneIndia } from '../utils/phone';
 import { setCurrentCandidate, setIsInterviewActive } from '../store/appSlice';
 import { Candidate } from '../types';
 import dayjs from 'dayjs';
@@ -34,6 +35,10 @@ const CandidateList: React.FC<CandidateListProps> = ({ onSelectCandidate }) => {
       candidate.phone.includes(searchText)
     );
   }, [candidates, searchText]);
+  
+  // Phone formatter: always display as (+91) <10-digits>
+  // Moved to shared util
+  
   
   const getStatusColor = (status: Candidate['status']) => {
     switch (status) {
@@ -98,6 +103,7 @@ const CandidateList: React.FC<CandidateListProps> = ({ onSelectCandidate }) => {
       title: 'Phone',
       dataIndex: 'phone',
       key: 'phone',
+      render: (_: any, record: Candidate) => formatPhoneIndia(record.phone),
     },
     {
       title: 'Status',
@@ -268,7 +274,7 @@ const CandidateList: React.FC<CandidateListProps> = ({ onSelectCandidate }) => {
                 </div>
                 <div>
                   <Text type="secondary">Phone:</Text>
-                  <div>{selectedCandidate.phone}</div>
+                  <div>{formatPhoneIndia(selectedCandidate.phone)}</div>
                 </div>
                 <div>
                   <Text type="secondary">Status:</Text>
@@ -311,12 +317,12 @@ const CandidateList: React.FC<CandidateListProps> = ({ onSelectCandidate }) => {
                       </div>
                       
                       {question.answer && (
-                        <div style={{ marginLeft: 16, padding: 8, backgroundColor: '#f8f8f8', borderRadius: 4 }}>
-                          <Text type="secondary">Answer:</Text>
-                          <div style={{ marginTop: 4 }}>{question.answer}</div>
+                        <div style={{ marginLeft: 16, padding: 12, backgroundColor: '#0f172a', border: '1px solid #1f2937', borderRadius: 6 }}>
+                          <div style={{ color: '#9ca3af', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4 }}>Answer</div>
+                          <div style={{ marginTop: 6, color: '#e6f4ff', whiteSpace: 'pre-wrap', lineHeight: 1.5, maxHeight: 180, overflowY: 'auto' }}>{question.answer}</div>
                           {question.feedback && (
-                            <div style={{ marginTop: 8, fontSize: 12, color: '#666' }}>
-                              <Text type="secondary" style={{ fontSize: 12 }}>Feedback:</Text> {question.feedback}
+                            <div style={{ marginTop: 10, fontSize: 12, color: '#9ca3af' }}>
+                              <span style={{ fontWeight: 600 }}>Feedback:</span> <span style={{ color: '#e6f4ff' }}>{question.feedback}</span>
                             </div>
                           )}
                         </div>

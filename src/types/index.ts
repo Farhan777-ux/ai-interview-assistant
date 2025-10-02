@@ -51,6 +51,8 @@ export interface AppState {
   currentCandidate?: string;
   showWelcomeBack: boolean;
   isInterviewActive: boolean;
+  showEndModal?: boolean;
+  endModalMessage?: string;
 }
 
 export const QUESTION_TIME_LIMITS = {

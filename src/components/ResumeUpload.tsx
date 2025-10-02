@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Upload, message, Button, Card, Progress, Alert } from 'antd';
+import { Upload, message, Button, Card, Progress, Alert, Form, Input } from 'antd';
+import { formatPhoneIndia, normalizeTo10Digits } from '../utils/phone';
 import { InboxOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { addCandidate } from '../store/candidatesSlice';
@@ -26,6 +27,8 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadComplete }) => {
   const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
   const [progress, setProgress] = useState(0);
   const [waitingForId, setWaitingForId] = useState(false);
+  const [needsInfo, setNeedsInfo] = useState(false);
+  const [missing, setMissing] = useState({ name: false, email: false, phone: false });
   const dispatch = useDispatch();
   const { candidates } = useSelector((state: RootState) => state.candidates);
   
@@ -67,8 +70,21 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadComplete }) => {
       
       setExtractedData(candidateInfo);
       setProgress(100);
+
+      const missingNow = {
+        name: !candidateInfo.name || candidateInfo.name.trim() === '',
+        email: !candidateInfo.email || candidateInfo.email.trim() === '',
+        phone: !candidateInfo.phone || candidateInfo.phone.trim() === '',
+      };
+      setMissing(missingNow);
       
       message.success('Resume processed successfully!');
+      
+      if (missingNow.name || missingNow.email || missingNow.phone) {
+        // Ask user to provide missing details before proceeding
+        setNeedsInfo(true);
+        return;
+      }
       
       // Create candidate and add to store
       const candidateData = {
@@ -125,33 +141,31 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadComplete }) => {
     showUploadList: false,
   };
 
-  const handleTestMode = () => {
-    console.log('🧪 Test mode clicked!');
-    
-    // Create a test candidate without file upload
-    const testData: ExtractedData = {
-      name: 'Test Candidate',
-      email: 'test@example.com',
-      phone: '(555) 123-4567',
-      text: 'Test candidate resume text for interview demonstration.'
+  const handleMissingSubmit = (values: { name?: string; email?: string; phone?: string }) => {
+    if (!extractedData) return;
+
+    const finalData: ExtractedData = {
+      ...extractedData,
+      name: missing.name ? values.name : extractedData.name,
+      email: missing.email ? values.email : extractedData.email,
+      phone: missing.phone ? normalizeTo10Digits(values.phone) : normalizeTo10Digits(extractedData.phone),
     };
-    
-    console.log('🧪 Creating test candidate');
-    
+
+    setExtractedData(finalData);
+
     const candidateData = {
-      name: testData.name!,
-      email: testData.email!,
-      phone: testData.phone!,
-      resumeText: testData.text,
-      resumeFileName: 'test-resume.txt',
+      name: finalData.name || '',
+      email: finalData.email || '',
+      phone: finalData.phone || '',
+      resumeText: finalData.text,
+      resumeFileName: uploadedFile?.name || 'resume.txt',
     };
-    
-    console.log('Dispatching addCandidate with data:', candidateData);
-    
-    setExtractedData(testData);
+
     dispatch(addCandidate(candidateData));
+    setNeedsInfo(false);
     setWaitingForId(true);
   };
+
 
   return (
     <div style={{ maxWidth: 600, margin: '0 auto', padding: '20px' }}>
@@ -169,17 +183,6 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadComplete }) => {
                 Support for PDF and DOCX files only. Maximum file size: 10MB.
               </p>
             </Dragger>
-            
-            <div style={{ textAlign: 'center', margin: '20px 0' }}>
-              <div style={{ margin: '10px 0', color: '#999', fontSize: '14px' }}>OR</div>
-              <Button 
-                type="dashed" 
-                onClick={handleTestMode}
-                style={{ marginTop: '10px' }}
-              >
-                🧪 Start Test Interview (Skip Upload)
-              </Button>
-            </div>
           </>
         ) : (
           <div>
@@ -215,10 +218,10 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadComplete }) => {
                       <div><strong>Extracted Information:</strong></div>
                       <div>Name: {extractedData.name || 'Not found'}</div>
                       <div>Email: {extractedData.email || 'Not found'}</div>
-                      <div>Phone: {extractedData.phone || 'Not found'}</div>
+                      <div>Phone: {extractedData.phone ? formatPhoneIndia(extractedData.phone) : 'Not found'}</div>
                       {(!extractedData.name || !extractedData.email || !extractedData.phone) && (
                         <div style={{ marginTop: 8, color: '#ff4d4f' }}>
-                          Missing fields will be collected during the chat interview.
+                          Please provide the missing details below to continue to the interview.
                         </div>
                       )}
                     </div>
@@ -226,6 +229,31 @@ const ResumeUpload: React.FC<ResumeUploadProps> = ({ onUploadComplete }) => {
                   type="success"
                   showIcon
                 />
+                {needsInfo && (
+                  <div style={{ marginTop: 16, padding: 16, border: '1px solid #f0f0f0', borderRadius: 8, background: '#fff' }}>
+                    <div style={{ fontWeight: 600, marginBottom: 12 }}>Complete your details to proceed</div>
+                    <Form layout="vertical" onFinish={handleMissingSubmit}>
+                      {missing.name && (
+                        <Form.Item name="name" label="Full Name" rules={[{ required: true, message: 'Please enter your name' }]}>
+                          <Input placeholder="Your full name" />
+                        </Form.Item>
+                      )}
+                      {missing.email && (
+                        <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email', message: 'Please enter a valid email' }]}>
+                          <Input placeholder="you@example.com" />
+                        </Form.Item>
+                      )}
+                      {missing.phone && (
+                        <Form.Item name="phone" label="Phone Number" rules={[{ required: true, message: 'Please enter your phone number' }, { pattern: /^\d{10}$/, message: 'Enter 10 digits' }]}>
+                          <Input addonBefore="(+91)" placeholder="0123456789" maxLength={10} />
+                        </Form.Item>
+                      )}
+                      <Form.Item>
+                        <Button type="primary" htmlType="submit">Proceed to Interview</Button>
+                      </Form.Item>
+                    </Form>
+                  </div>
+                )}
               </div>
             )}
           </div>

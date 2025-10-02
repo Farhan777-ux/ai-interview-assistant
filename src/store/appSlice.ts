@@ -5,6 +5,8 @@ const initialState: AppState = {
   currentView: 'interviewee',
   showWelcomeBack: false,
   isInterviewActive: false,
+  showEndModal: false,
+  endModalMessage: undefined,
 };
 
 const appSlice = createSlice({
@@ -26,6 +28,11 @@ const appSlice = createSlice({
     setIsInterviewActive: (state, action: PayloadAction<boolean>) => {
       state.isInterviewActive = action.payload;
     },
+
+    setEndModal: (state, action: PayloadAction<{ visible: boolean; message?: string }>) => {
+      state.showEndModal = action.payload.visible;
+      state.endModalMessage = action.payload.message;
+    },
     
     resetApp: () => initialState,
   },
@@ -36,6 +43,7 @@ export const {
   setCurrentCandidate,
   setShowWelcomeBack,
   setIsInterviewActive,
+  setEndModal,
   resetApp,
 } = appSlice.actions;
 

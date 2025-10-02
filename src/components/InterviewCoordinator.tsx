@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Modal, Input, Button, Form, message, Card } from 'antd';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { Modal, Input, Button, Form, message, Card, Typography } from 'antd';
+import { normalizeTo10Digits } from '../utils/phone';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import {
@@ -24,6 +25,8 @@ const InterviewCoordinator: React.FC<InterviewCoordinatorProps> = ({
   const [form] = Form.useForm();
   const [showMissingFieldsModal, setShowMissingFieldsModal] = useState(false);
   const [isStartingInterview, setIsStartingInterview] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const firstQuestionScheduledRef = useRef(false);
   const dispatch = useDispatch();
   
   const { candidates } = useSelector((state: RootState) => state.candidates);
@@ -67,25 +70,28 @@ const InterviewCoordinator: React.FC<InterviewCoordinatorProps> = ({
       }));
       console.log('Added welcome message');
       
-      // Add first question
-      setTimeout(() => {
-        console.log('Adding first question:', questions[0].text);
-        dispatch(addChatMessage({
-          candidateId,
-          message: {
-            type: 'question',
-            content: questions[0].text,
-            questionId: questions[0].id,
-            metadata: {
-              difficulty: questions[0].difficulty,
-              questionNumber: 1
+      // Add first question only once (guard against double effects)
+      if (!firstQuestionScheduledRef.current) {
+        firstQuestionScheduledRef.current = true;
+        setTimeout(() => {
+          console.log('Adding first question:', questions[0].text);
+          dispatch(addChatMessage({
+            candidateId,
+            message: {
+              type: 'question',
+              content: questions[0].text,
+              questionId: questions[0].id,
+              metadata: {
+                difficulty: questions[0].difficulty,
+                questionNumber: 1
+              }
             }
-          }
-        }));
-        
-        dispatch(setIsInterviewActive(true));
-        console.log('Interview activated');
-      }, 2000);
+          }));
+
+          dispatch(setIsInterviewActive(true));
+          console.log('Interview activated');
+        }, 500);
+      }
       
     } catch (error) {
       console.error('Error starting interview:', error);
@@ -126,12 +132,11 @@ const InterviewCoordinator: React.FC<InterviewCoordinatorProps> = ({
       form.setFieldsValue({
         name: candidate.name || '',
         email: candidate.email || '',
-        phone: candidate.phone || ''
+        phone: normalizeTo10Digits(candidate.phone) || ''
       });
     } else {
-      // All fields present, start interview
-      console.log('Starting interview process for candidate:', candidate.name);
-      startInterviewProcess();
+      // All fields present, show policy modal before starting
+      setShowPolicyModal(true);
     }
   }, [candidate, candidateId, form, startInterviewProcess]);
   
@@ -143,7 +148,7 @@ const InterviewCoordinator: React.FC<InterviewCoordinatorProps> = ({
         updates: {
           name: values.name || candidate?.name || '',
           email: values.email || candidate?.email || '',
-          phone: values.phone || candidate?.phone || ''
+          phone: normalizeTo10Digits(values.phone || candidate?.phone || '')
         }
       }));
       
@@ -184,6 +189,24 @@ const InterviewCoordinator: React.FC<InterviewCoordinatorProps> = ({
   
   return (
     <>
+      {/* Policy Modal: Tab switch rule */}
+      <Modal
+        title={
+          <div style={{ fontWeight: 800 }}>Important Interview Rule</div>
+        }
+        open={showPolicyModal}
+        onOk={() => { setShowPolicyModal(false); startInterviewProcess(); }}
+        onCancel={() => setShowPolicyModal(false)}
+        okText="I Understand"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        maskClosable={false}
+      >
+        <div style={{ fontSize: 16 }}>
+          <b>Warning:</b> If you switch browser tabs or minimize the window during the interview,
+          <b> the interview will end immediately</b>.
+        </div>
+      </Modal>
+
       {/* Missing Fields Modal */}
       <Modal
         title="Complete Your Profile"
@@ -230,9 +253,12 @@ const InterviewCoordinator: React.FC<InterviewCoordinatorProps> = ({
             <Form.Item
               name="phone"
               label="Phone Number"
-              rules={[{ required: true, message: 'Please enter your phone number' }]}
+              rules={[
+                { required: true, message: 'Please enter your phone number' },
+                { pattern: /^\d{10}$/, message: 'Enter 10 digits' },
+              ]}
             >
-              <Input placeholder="Enter your phone number" />
+              <Input addonBefore="(+91)" placeholder="0123456789" maxLength={10} />
             </Form.Item>
           )}
         </Form>

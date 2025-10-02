@@ -70,13 +70,14 @@ export function extractCandidateInfo(text: string): ExtractedData {
   }
 
   // Extract phone number using regex (supports various formats)
-  const phoneRegex = /(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})(?:\s?(?:ext|x|extension)[-.\s]?(\d+))?/g;
+  // Strategy: capture digits and keep only the last 10, without formatting here.
+  const phoneRegex = /[+()\-\.\s\d]{7,}/g; // broad capture, will sanitize below
   const phoneMatch = cleanText.match(phoneRegex);
   if (phoneMatch && phoneMatch.length > 0) {
-    extractedData.phone = phoneMatch[0].replace(/\D/g, '').replace(/^1/, '');
-    // Format phone number
-    if (extractedData.phone.length === 10) {
-      extractedData.phone = `(${extractedData.phone.slice(0, 3)}) ${extractedData.phone.slice(3, 6)}-${extractedData.phone.slice(6)}`;
+    const digits = phoneMatch.join(' ').replace(/\D/g, '');
+    const last10 = digits.slice(-10);
+    if (last10.length === 10) {
+      extractedData.phone = last10; // store unformatted 10 digits; UI will format as (+91) <10>
     }
   }
 
