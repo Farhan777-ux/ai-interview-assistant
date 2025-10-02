@@ -79,6 +79,3 @@ Vercel
 - The app stores data locally (browser). Clearing site data resets candidates and progress.
 - No external LLM API keys are required; question generation and scoring are local mocks.
 
-## License
-
-MIT
