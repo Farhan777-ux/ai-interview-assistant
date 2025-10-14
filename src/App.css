@@ -45,3 +45,14 @@ body {
 .ant-typography, .ant-card, .ant-layout, .ant-layout-content, .ant-layout-header {
   font-family: Inter, 'Segoe UI', Roboto, Arial, sans-serif !important;
 }
+
+
+/* Override specifically for labels and form text */
+.ant-modal .ant-form-item-label,
+.ant-modal .ant-form-item-label *,
+.ant-modal label,
+.ant-modal span {
+  color: #1f2937 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
