@@ -69,25 +69,60 @@ export function extractCandidateInfo(text: string): ExtractedData {
     extractedData.email = emailMatch[0];
   }
 
-  // Extract phone number using regex (supports various formats)
-  // Strategy: capture digits and keep only the last 10, without formatting here.
-  const phoneRegex = /[+()\-\.\s\d]{7,}/g; // broad capture, will sanitize below
-  const phoneMatch = cleanText.match(phoneRegex);
-  if (phoneMatch && phoneMatch.length > 0) {
-    const digits = phoneMatch.join(' ').replace(/\D/g, '');
-    const last10 = digits.slice(-10);
-    if (last10.length === 10) {
-      extractedData.phone = last10; // store unformatted 10 digits; UI will format as (+91) <10>
+  // Extract phone number robustly and store only the last 10 digits (UI will format as (+91) XXXXXXXX)
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  
+  const candidateRegex = /(\+?\d[\d\-\s().]{8,}?\d)/g; // sequences that look like phone numbers
+  const keywords = /(phone|mobile|contact|tel)\s*:?/i;
+  
+  const toTenDigits = (s: string): string | undefined => {
+    const digits = s.replace(/\D/g, '');
+    if (digits.length >= 10) {
+      return digits.slice(-10);
     }
+    return undefined;
+  };
+  
+  // 1) Prefer lines that explicitly mention phone-like keywords
+  for (const line of lines) {
+    if (keywords.test(line)) {
+      const matches = Array.from(line.matchAll(candidateRegex));
+      for (const m of matches) {
+        const ten = toTenDigits(m[0]);
+        if (ten) {
+          extractedData.phone = ten;
+          break;
+        }
+      }
+      if (extractedData.phone) break;
+    }
+  }
+  
+  // 2) Otherwise, search the whole text for plausible sequences
+  if (!extractedData.phone) {
+    const matches = Array.from(cleanText.matchAll(candidateRegex));
+    for (const m of matches) {
+      const ten = toTenDigits(m[0]);
+      if (ten) {
+        extractedData.phone = ten;
+        break;
+      }
+    }
+  }
+  
+  // 3) Fallback: plain 10-digit runs
+  if (!extractedData.phone) {
+    const tenRun = cleanText.match(/\b\d{10}\b/);
+    if (tenRun) extractedData.phone = tenRun[0];
   }
 
   // Extract name (this is more complex and may need refinement)
   // Look for name patterns at the beginning of the document
-  const lines = cleanText.split('\n').filter(line => line.trim().length > 0);
+  const nameLines = cleanText.split('\n').filter(line => line.trim().length > 0);
   
   // Try to find the name in the first few lines
-  for (let i = 0; i < Math.min(5, lines.length); i++) {
-    const line = lines[i].trim();
+  for (let i = 0; i < Math.min(5, nameLines.length); i++) {
+    const line = nameLines[i].trim();
     
     // Skip lines that look like contact info or other non-name content
     if (
