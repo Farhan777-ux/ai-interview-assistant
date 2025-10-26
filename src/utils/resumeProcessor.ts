@@ -62,13 +62,23 @@ export function extractCandidateInfo(text: string): ExtractedData {
     text: cleanText,
   };
 
-  // Extract email using regex
-  const emailRegex = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
+  // Extract email using regex (improved to handle more formats)
+  const emailRegex = /\b[A-Za-z0-9][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g;
   const emailMatch = cleanText.match(emailRegex);
   if (emailMatch && emailMatch.length > 0) {
-    extractedData.email = emailMatch[0];
+    // Filter out any invalid emails and pick the first valid one
+    const validEmail = emailMatch.find(email => 
+      !email.startsWith('.') && 
+      !email.endsWith('.') &&
+      !email.includes('..') &&
+      email.length <= 254
+    );
+    if (validEmail) {
+      extractedData.email = validEmail.toLowerCase();
+    }
   }
 
+<<<<<<< HEAD
   // Extract phone number robustly and store only the last 10 digits (UI will format as (+91) XXXXXXXX)
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   
@@ -79,6 +89,48 @@ export function extractCandidateInfo(text: string): ExtractedData {
     const digits = s.replace(/\D/g, '');
     if (digits.length >= 10) {
       return digits.slice(-10);
+=======
+  // Extract phone number using regex (supports various formats)
+  // Strategy: Look for Indian phone numbers in various formats
+  const phonePatterns = [
+    // +91 formats
+    /\+91[\s-]?[6-9]\d{9}/g,
+    // 0 prefix formats (like 098765...)
+    /0[6-9]\d{9}/g,
+    // Direct 10 digit starting with 6-9
+    /(?<!\d)[6-9]\d{9}(?!\d)/g,
+    // With country code without +
+    /91[\s-]?[6-9]\d{9}/g,
+    // Common formatting patterns
+    /[6-9]\d{4}[\s-]?\d{5}/g,
+    /[6-9]\d{2}[\s-]?\d{3}[\s-]?\d{4}/g
+  ];
+  
+  let phoneNumber = '';
+  for (const pattern of phonePatterns) {
+    const matches = cleanText.match(pattern);
+    if (matches && matches.length > 0) {
+      // Get the first match and extract digits
+      const digits = matches[0].replace(/\D/g, '');
+      
+      // Handle different formats
+      let cleanedNumber = '';
+      if (digits.startsWith('91') && digits.length === 12) {
+        // +91 format
+        cleanedNumber = digits.slice(-10);
+      } else if (digits.startsWith('0') && digits.length === 11) {
+        // 0-prefix format
+        cleanedNumber = digits.slice(-10);
+      } else if (digits.length === 10 && digits[0] >= '6' && digits[0] <= '9') {
+        // Direct 10 digit
+        cleanedNumber = digits;
+      }
+      
+      if (cleanedNumber.length === 10 && cleanedNumber[0] >= '6' && cleanedNumber[0] <= '9') {
+        phoneNumber = cleanedNumber;
+        break;
+      }
+>>>>>>> 6624d22e46cb8eb8dc67c28c62548e6a9b5de4e2
     }
     return undefined;
   };
@@ -114,6 +166,10 @@ export function extractCandidateInfo(text: string): ExtractedData {
   if (!extractedData.phone) {
     const tenRun = cleanText.match(/\b\d{10}\b/);
     if (tenRun) extractedData.phone = tenRun[0];
+  }
+  
+  if (phoneNumber) {
+    extractedData.phone = phoneNumber; // store unformatted 10 digits; UI will format as (+91) <10>
   }
 
   // Extract name (this is more complex and may need refinement)
