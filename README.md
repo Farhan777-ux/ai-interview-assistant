@@ -20,6 +20,7 @@ Data is persisted locally so users can close/reopen and continue. Includes a Wel
 
 - Start: `npm start`
 - URL: http://localhost:3000
+- Live Project:https://ai-interview-assistant-ebon.vercel.app/
 
 ## Core Features
 
